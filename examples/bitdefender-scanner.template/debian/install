@@ -1,0 +1,6 @@
+bin/bdscan usr/lib/BitDefender-scanner/bin
+var/lib/scan/bdupd.so usr/lib/BitDefender-scanner/var/lib/scan
+var/lib/scan/bdcore.so usr/lib/BitDefender-scanner/var/lib/scan
+var/lib/scan/libfn.so usr/lib/BitDefender-scanner/var/lib/scan
+var/scanner.inf usr/lib/BitDefender-scanner/var
+

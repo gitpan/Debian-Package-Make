@@ -1,0 +1,47 @@
+Debian-Package-Make version 0.02
+================================
+
+Debian::Package::Make::* is a set of modules that simplify the process
+of writing make-*-package programs (scripts that automatically
+generate Debian packages).
+
+This is useful for source distributions where contents change too
+frequently for manual building or where peculiar licenses prohibit
+redistribution via public package repositories.
+
+INSTALLATION
+
+To install this module type the following:
+
+   perl Makefile.PL
+   make
+   make test
+   make install
+
+DEPENDENCIES
+
+This module requires a few modules that are included in Perl distribution
+
+  File::Temp
+  File::Path
+  File::Copy
+  File::Find
+  Text::Wrap
+  Cwd
+
+This module requires these other modules and libraries:
+
+  LWP::Simple
+  Dpkg::Arch, Dpkg::Cdata (part of the dpkg-dev package)
+
+The sample scripts in the contrib directory may require additional
+modules.
+
+COPYRIGHT AND LICENCE
+
+Copyright (C) 2008 by Hilko Bengen
+
+This library is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.

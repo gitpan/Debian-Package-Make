@@ -1,0 +1,66 @@
+-*- org -*-
+
+* API
+** maintainer attribute -> #MAINTAINER# ?
+** Debhelper: add_dir
+** Debhelper: add_file
+* Testcases
+** Trivial Packages that *supposed* to fail at some point
+*** broken debian/rules (fail dpkg-buildpackage -b)
+*** broken tarball (fail tar -x.f)
+*** broken version numbering?
+* Example sites for
+** Antivirus
+*** drweb
+*** trend
+*** f-prot
+**** Workstation
+     http://files.f-prot.com/files/unix-trial/fp-Linux-i686-ws.tar.gz
+     http://files.f-prot.com/files/unix-trial/fp-Linux-x86_64-ws.tar.gz
+**** Mail Server
+     http://files.f-prot.com/files/unix-trial/fp-Linux-i686-ms.tar.gz
+     http://files.f-prot.com/files/unix-trial/fp-Linux-x86_64-ms.tar.gz
+*** DONE avira
+*** DONE bitdefender
+    http://download.bitdefender.com/SMB/Workstation_Security_and_Management/BitDefender_Antivirus_Scanner_for_Unices/Unix/Current/EN/Version_7.x/Linux/BitDefender-scanner-7.5-4.linux-gcc3x.i586.tar.run
+    http://download.bitdefender.com/SMB/File_Server_Security/BitDefender_Security_for_Samba/Unix/Current/EN/Version_2.X/Linux/BitDefender-Security-Samba-2.1-5-linuxgcc3x-i586.ipk.run
+**** DONE -scanner
+**** DONE -data
+** IBM JDK?
+** Intel C Compiler?
+** Google Picasa
+   http://picasa.google.com/linux/download.html
+   http://dl.google.com/linux/standalone/picasa-2.2.2820-5.i386.bin
+** Visual Paradigm for UML Community Edition
+** Adobe Reader
+   http://www.adobe.com/products/reader/
+   http://ardownload.adobe.com/pub/adobe/reader/unix/8.x/8.1.1/enu/AdobeReader_enu-8.1.1-1.i486.tar.bz2
+   ftp://ftp.adobe.com/pub/adobe/reader/unix/8.x/8.1.1/enu/AdobeReader_enu-8.1.1-1.i486.tar.bz2
+*** TODO Version 7
+*** DONE Version 8
+** Auerswald tools
+*** TODO COMtools
+    http://www.auerswald-root.de/download/datei/linux/comtools/v2269/COMtools-2.2.69.tar.gz
+*** TODO COMlist
+    http://www.auerswald-root.de/download/datei/linux/comlist/v2436/COMlist-2.4.36.tar.gz
+*** DONE COMset
+    http://www.auerswald-root.de/download/datei/linux/comset/v2628/COMset-2.6.28.tar.gz
+* Ideas
+** Templating system
+*** Template (TT2)
+*** Text::Template
+** Implement separate upstream_version, debian_version attributes
+** Add determine_version method to D::P::Make
+   This should be called from (download|copy)_orig_tarball AFTER the
+   tarball has been put in place.
+** DONE Create debian directory not from hash but from template directory
+   control.in => sed-like-construct => control
+*** TODO implement some debhelper-specific things
+* Bugs
+** TODO po/POTFILES.in
+*** DONE Blacklist po/POTFILES.in ...
+*** switch to different ending ... .dpm.in ?
+** TODO Support native packages
+   dpkg-source(909):
+       my $native = !($difffile || $debianfile);
+** DONE template subdirectories are not created

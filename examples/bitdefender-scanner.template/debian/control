@@ -1,0 +1,21 @@
+Source: bitdefender-scanner
+Section: non-free/utils
+Priority: extra
+Maintainer: Hilko Bengen <bengen@debian.org>
+Build-Depends: debhelper (>= 5)
+Standards-Version: 3.7.3
+
+Package: bitdefender-scanner
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Recommends: bitdefender-data
+Description: BitDefender Antivirus Scanner for Unices
+ BitDefender Antivirus Scanner for Unices is a powerful on-demand
+ antivirus scanner for command lines and shell scripts.
+ .
+ It supports manual scanning of individual files or entire file
+ systems, malicious code detection, and disinfection. After each scan,
+ a detailed report of displayed positive virus detections is
+ displayed. It uses scanning engines that are certified by prestigious
+ testing labs to scan regular files, multi-level archives, packed
+ files, email messages (eml), and password protected archives.

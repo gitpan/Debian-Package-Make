@@ -1,0 +1,15 @@
+Source: adobereader
+Section: non-free/text
+Priority: extra
+Maintainer: Hilko Bengen <bengen@debian.org>
+Build-Depends: debhelper (>= 5)
+Standards-Version: 3.7.2
+
+Package: adobereader
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Adobe Reader
+ The free Adobe Reader (formerly Adobe Acrobat Reader) allows you to
+ view, navigate, and print PDF files across all major computing
+ platforms. Adobe Reader is the free viewing companion to Adobe
+ Acrobat and to Acrobat Capture software.

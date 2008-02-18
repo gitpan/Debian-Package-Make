@@ -1,0 +1,19 @@
+libdebian-package-make-perl (0.02) unstable; urgency=low
+
+  * Added backward compatibility hack for older dpkg-dev packages that are
+    not based around proper Perl modules.
+  * LWP is used for downloading stuff instead of LWP::Simple. And, yes, I
+    added the necessary dependencs. Closes: #465618
+  * Improved description
+  * Added a method for detecting the version number from a filename or a
+    URL.
+  * D:P:M:TemplateDir now sets default values for the location of the
+    template directory.
+
+ -- Hilko Bengen <bengen@debian.org>  Thu, 14 Feb 2008 15:34:13 +0100
+
+libdebian-package-make-perl (0.01) unstable; urgency=low
+
+  * Initial public release (Closes: #464392)
+
+ -- Hilko Bengen <bengen@debian.org>  Wed, 06 Feb 2008 15:59:19 +0100

@@ -1,0 +1,6 @@
+etc/BitDefender-scanner
+usr/lib/BitDefender-scanner/bin
+usr/lib/BitDefender-scanner/var/lib/scan/Plugins
+var/log/BitDefender-scanner/
+var/lib/BitDefender-scanner/quarantine
+usr/bin

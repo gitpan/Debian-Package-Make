@@ -1,0 +1,3 @@
+var/log/BitDefender-scanner usr/lib/BitDefender-scanner/var/log
+var/lib/BitDefender-scanner/quarantine usr/lib/BitDefender-scanner/var/quarantine
+usr/lib/BitDefender-scanner/bin/bdscan usr/bin/bdscan
