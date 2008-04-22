@@ -4,123 +4,36 @@ use 5.008008;
 use strict;
 use warnings;
 
-our $VERSION = '0.02';
+our $VERSION = 0.04;
 
 require Exporter;
 our @ISA = qw(Exporter);
-
 our @EXPORT = qw(@ATTRIBUTES);
 
-use Carp qw(carp cluck);
-use File::Temp;
-use File::Path;
-use File::Copy qw(cp mv);
-use File::Copy::Recursive qw(dircopy);
-use Cwd;
-use LWP::UserAgent;
-
-# Workarounds for etch comparibility
 BEGIN {
-    eval 'use Dpkg::Arch qw(get_host_arch)';
+    eval '
+        use Dpkg::Arch qw(get_host_arch);
+        use Dpkg::Cdata qw(parsecdata);
+        use Dpkg::Version qw(parseversion);
+    ';
     if ($@) {
-        eval {
-            *get_host_arch = sub {
-                my %dpkg_arch = map { chomp; split /=/ } `dpkg-architecture`;
-                return $dpkg_arch{DEB_HOST_ARCH};
-            };
-        };
-    }
-    eval 'use Dpkg::Cdata qw(parsecdata)';
-    # parsecdata has been copied from the Dpkg::CData module (dpkg-dev
-    # 1.14.16.6). On systems newer than etch, it is not used.
-    if ($@) {
-        *parsecdata = sub {
-            my ( $input, $file, %options ) = @_;
-
-            $options{allow_pgp} = 0 unless exists $options{allow_pgp};
-            $options{allow_duplicate} = 0
-              unless exists $options{allow_duplicate};
-
-            my $paraborder     = 1;
-            my $fields         = undef;
-            my $cf             = '';      # Current field
-            my $expect_pgp_sig = 0;
-            while (<$input>) {
-                s/\s*\n$//;
-                next if ( m/^$/ and $paraborder );
-                next if (m/^#/);
-                $paraborder = 0;
-                if (m/^(\S+?)\s*:\s*(.*)$/) {
-                    unless ( defined $fields ) {
-                        my %f;
-
-                        # tie %f, "Dpkg::Fields::Object";
-                        $fields = \%f;
-                    }
-                    if ( exists $fields->{$1} ) {
-                        unless ( $options{allow_duplicate} ) {
-                            syntaxerr( $file,
-                                sprintf("duplicate field %s found"),
-                                capit($1) );
-                        }
-                    }
-                    $fields->{$1} = $2;
-                    $cf = $1;
-                }
-                elsif (m/^\s+\S/) {
-                    length($cf)
-                      || syntaxerr( $file,
-                        "continued value line not in field" );
-                    $fields->{$cf} .= "\n$_";
-                }
-                elsif (m/^-----BEGIN PGP SIGNED MESSAGE/) {
-                    $expect_pgp_sig = 1;
-                    if ( $options{allow_pgp} ) {
-
-                        # Skip PGP headers
-                        while (<$input>) {
-                            last if m/^$/;
-                        }
-                    }
-                    else {
-                        syntaxerr( $file, "PGP signature not allowed here" );
-                    }
-                }
-                elsif (m/^$/) {
-                    if ($expect_pgp_sig) {
-
-                        # Skip empty lines
-                        $_ = <$input> while defined($_) && $_ =~ /^\s*$/;
-                        length($_)
-                          || syntaxerr( $file,
-                            "expected PGP signature, found EOF after blank line"
-                          );
-                        s/\n$//;
-                        m/^-----BEGIN PGP SIGNATURE/
-                          || syntaxerr(
-                            $file,
-                            sprintf("expected PGP signature, found something else \`%s'"),
-                            $_
-                          );
-
-                        # Skip PGP signature
-                        while (<$input>) {
-                            last if m/^-----END PGP SIGNATURE/;
-                        }
-                        length($_)
-                          || syntaxerr( $file, "unfinished PGP signature" );
-                    }
-                    last;    # Finished parsing one block
-                }
-                else {
-                    syntaxerr( $file,
-                        "line with unknown format (not field-colon-value)" );
-                }
-            }
-            return $fields;
-        };
+        eval '
+            require Debian::Package::Make::Compat;
+            import Dpkg::Arch qw(get_host_arch);
+            import Dpkg::Cdata qw(parsecdata);
+            import Dpkg::Version qw(parseversion);
+        ';
     }
 }
+
+use Carp qw(carp cluck);
+use File::Temp qw(tempdir);
+use File::Path qw(mkpath rmtree);
+use File::Copy qw(cp mv);
+use File::Copy::Recursive qw(dircopy);
+use IPC::Run3 qw(run3);
+use Cwd;
+use LWP::UserAgent;
 
 =pod
 
@@ -188,8 +101,6 @@ For non-native packages (where Debian-specific changes are applied to
 the source package), it unpacks the original tarball or copies the
 content of F<orig_dir> to the build directory.
 
-Support for native packages has not yet been implemented.
-
 =item 4. Apply Debian-specific changes to build directory
 
 The C<generate_files> method is used to write out the contents of the
@@ -198,11 +109,11 @@ C<files> attribute to the build directory.
 The contents of C<files> should be set by a C<prepare_files> method.
 which is not implemented in the Debian::Package::Make base class.
 
-The Debian::Package::Make distribution provides a two classes that
-offer different approaches for adding files to the build directory.
-Since this is where most of the effort in generating Debian packages
-goes, a design goal for Debian::Package::Make was to provide the
-greatest possible flexibility at this stage.
+The Debian::Package::Make distribution provides two classes that offer
+different approaches for adding files to the build directory. Since
+this is where most of the effort in generating Debian packages goes, a
+design goal for Debian::Package::Make was to provide the greatest
+possible flexibility at this stage.
 
 =item 5. Finally build the package(s)
 
@@ -272,7 +183,21 @@ from Debian::Package::Make.
 
 =over
 
-=item C<version>, C<distribution>, C<urgency>
+=item C<version>, C<epoch>, C<upstream_version>, C<debian_revision>
+
+A package's version consists of an epoch(optional), the upstream
+version, and the debian revision(optional). If the C<version>
+attribute is set, it is parsed into the three components. Vice versa,
+if any of the three mentioned components is set, the C<version>
+attribute is updated.
+
+=item C<distribution>, C<urgency>
+
+The C<distribution> attribute identifies the distribution into which
+the package should be uploaded (i.e. stable, unstable, experimental.)
+The C<urgency> attribute is an indicator that tells Debian's archive
+infrastructure how fast a package should propagate from the unstable
+distribution to the testing distribution (i.e. low, medium, high.).
 
 =item C<changes>
 
@@ -284,6 +209,8 @@ bulleted list.
 Uploader's name and e-mail address.
 
 =item C<builddate>
+
+=item C<verbose>
 
 =back
 
@@ -306,12 +233,33 @@ our @ATTRIBUTES = (
       maintainer uploaders ),
 
     # topmost debian/changelog entry
-    qw( version distribution urgency
-      changes
-      me builddate ),
+    # FIXME no longer use version! epoch:version-revision
+    qw( epoch upstream_version debian_revision
+        distribution urgency
+        changes
+        me builddate ),
 
     qw( sign_source sign_changes ),
+
+    qw( verbose ),
 );
+
+sub version {
+    my ( $self, $v ) = @_;
+    if ( defined $v ) {
+        my %vh = parseversion($v);
+        $self->{epoch}            = $vh{epoch} || '';
+        $self->{upstream_version} = $vh{version};
+        $self->{debian_revision}  = $vh{revision} || '';
+        $self->_rename_source_files;
+    } else {
+        $v =
+            ( $self->{epoch} ? $self->{epoch} . ':' : '' )
+          . ( $self->{upstream_version} )
+          . ( $self->{debian_revision} ? '-' . $self->{debian_revision} : '' );
+    }
+    return $v;
+}
 
 =pod
 
@@ -354,19 +302,21 @@ script; create a subclass instead.
 sub new {
     my ( $class, %param ) = @_;
     my $self = bless {
-        native   => 0,
         section  => 'unknown',
         priority => 'extra',
         source   => ( lc($class) =~ /.*::(.*?)$/ ),
 
-        version      => '0.0-0unknown1',
         distribution => 'unstable',
         urgency      => 'low',
         changes      => ["Autobuilt using $class"],
 
         files        => {},
         output_files => [],
+
+        verbose => 0,
     }, $class;
+
+    $self->version('0.0-0unknown1');
 
     foreach my $key ( keys %param ) {
         $self->$key( $param{$key} );
@@ -383,12 +333,14 @@ sub new {
     if ( exists $self->{base_dir} ) {
         mkpath $self->{base_dir};
     } else {
-        $self->{base_dir} =
-          File::Temp::tempdir("/tmp/build-$self->{source}.XXXXXXXX");
+        $self->{base_dir} = tempdir("/tmp/build-$self->{source}.XXXXXXXX");
     }
 
-    $self->{build_dir} ||=
-      ( $self->{base_dir} . '/' . $self->{source} . '-' . $self->{version} );
+    $self->{build_dir} =
+      (     $self->{base_dir} . '/'
+          . $self->{source} . '-'
+          . $self->{upstream_version} );
+
     mkpath( $self->{build_dir} );
 
     chomp( $self->{builddate} ||= `date -R` );
@@ -398,7 +350,7 @@ sub new {
 
 =item C<detect_version>
 
-Use a regular expression to detect the verion number in common
+Use a regular expression to detect the version number in common
 filename patterns, e.g.:
 
 =over
@@ -407,26 +359,26 @@ filename patterns, e.g.:
 
 F<COMset-2.6.28.tar.gz>
 
-=item
+=item *
 
 F<BitDefender-scanner-7.5-4.linux-gcc3x.i586.tar.run>
 
-=iten 
+=item *
 
 F</tmp/downloads/AdobeReader_enu-7.0.9-1.i386.tar.gz>
 
-=item
+=item *
 
 F<http://dl.google.com/linux/standalone/picasa-2.2.2820-5.i386.bin>
 
-=back
+=back *
 
 This method is called by the standard C<copy_orig_tarball> and
 C<download_orig_tarball> methods after they have done their work.
 
-FIXME
-
 =cut
+
+# FIXME
 
 sub detect_version {
     my ( $self, %param ) = @_;
@@ -437,7 +389,7 @@ sub detect_version {
 
     if ( defined $version ) {
         $version =~ tr/-/./;
-        $self->version("$version-1");
+        $self->upstream_version($version);
     } else {
         die("Could not guess version from path \"$param{path}\"");
     }
@@ -466,7 +418,6 @@ determine the version number for the package.
 
 sub copy_orig_tarball {
     my ( $self, %param ) = @_;
-    my ($version) = $self->{version} =~ /^(.*?)(?:-.*)?$/;
     if ( exists $param{extension} ) {
         $self->{orig_tarball_extension} = $param{extension};
     } elsif ( $param{file} =~ /\.(gz|bz2)$/ ) {
@@ -478,9 +429,9 @@ sub copy_orig_tarball {
     my $extension = $self->{orig_tarball_extension};
 
     cp( $param{file},
-        "$self->{base_dir}/$self->{source}_$version.orig.tar.$extension" );
+        "$self->{base_dir}/$self->{source}_$self->{upstream_version}.orig.tar.$extension" );
     $self->{orig_tarball} =
-      "$self->{base_dir}/$self->{source}_$version.orig.tar.$extension";
+      "$self->{base_dir}/$self->{source}_$self->{upstream_version}.orig.tar.$extension";
     $self->detect_version( path => $param{file} );
 }
 
@@ -507,7 +458,6 @@ attribute to the downloaded file..
 
 sub download_orig_tarball {
     my ( $self, %param ) = @_;
-    my ($version) = $self->{version} =~ /^(.*?)(?:-.*)?$/;
     if ( exists $param{extension} ) {
         $self->{orig_tarball_extension} = $param{extension};
     } elsif ( $param{url} =~ /\.(gz|bz2)$/ ) {
@@ -518,12 +468,12 @@ sub download_orig_tarball {
     }
     my $extension = $self->{orig_tarball_extension};
     $self->{orig_tarball} =
-      "$self->{base_dir}/$self->{source}_$version.orig.tar.$extension";
+      "$self->{base_dir}/$self->{source}_$self->{upstream_version}.orig.tar.$extension";
 
     my $ua       = LWP::UserAgent->new;
     my $response = $ua->get( $param{url} );
     if ( $response->is_success ) {
-        open my $fh, ">$self->{orig_tarball}";
+        open my $fh, '>', "$self->{orig_tarball}";
         print $fh $response->content;
         close $fh;
         $self->detect_version( path => $param{url} );
@@ -548,8 +498,8 @@ sub generate_orig_dir {
     my ( $self, %param ) = @_;
     unless ( exists $self->{orig_dir} ) {
         $self->{orig_dir} =
-          File::Temp::tempdir("$self->{base_dir}/orig.XXXXXXXX");
-        $self->rename_files();
+          tempdir("$self->{base_dir}/orig.XXXXXXXX");
+        $self->_rename_source_files();
     }
 }
 
@@ -582,9 +532,11 @@ sub generate_build_dir {
                   . $self->{orig_tarball_extension} );
         }
 
-        my $tmpdir = File::Temp::tempdir("$self->{base_dir}/unpack.XXXXXXXX");
+        my $tmpdir = tempdir("$self->{base_dir}/unpack.XXXXXXXX");
         my @cmdline = ( qw(tar -C), $tmpdir, $extract, $self->{orig_tarball} );
-        _verbose_system(@cmdline) == 0 or return;
+        if (! $self->_run_cmd(@cmdline)) {
+	    return;
+	}
 
         # Mimic dpkg-source(1)'s behavior (sub extracttar):
         #
@@ -623,10 +575,9 @@ sub test_build_setup {
     my ( $self, %param ) = @_;
 
     if ( $self->{section} eq 'unknown' ||
-	 $self->{version} eq '0.0-0unknown1' ||
+	 $self->version eq '0.0-0unknown1' ||
 	 $self->{me} =~ /unknown|example/ ||
-	 $self->{maintainer} =~ /unknown|example/ ||
-	 $self->{native} && $self->{orig_dir} ) {
+	 $self->{maintainer} =~ /unknown|example/ ) {
 	carp("Default values not changed.");
 	return;
     }
@@ -651,13 +602,15 @@ with F<.in>. the following macros are currently recognized.
 
 =over
 
-=item * #SOURCE#
+=item * #SECTION#
 
-=item * #VERSION#
+=item * #PRIORITY#
 
-=item * #UPSTREAMVERSION#
+=item * #POLICY#
 
-=item * #DEBIANVERSION#
+=item * #SOURCE#, #PACKAGE# (synonomous)
+
+=item * #VERSION# ( #EPOCH#, #UPSTREAMVERSION#, #DEBIANREVISION# )
 
 =item * #DISTRIBUTION#
 
@@ -679,7 +632,6 @@ sub process_templates {
     my ($self) = @_;
 
     # FIXME Regex probably too simple -- epoch?
-    my ( $upstreamversion, $debianversion ) = $self->{version} =~ /^(.+)-(.+)$/;
     my ( $username, $email ) = $self->{me} =~ /^(.+) <(.+)>$/;
 
     #                                    Tue, 05 Feb 2008 17:09:27 +0100
@@ -693,15 +645,17 @@ sub process_templates {
 
         # debian/control
         $self->{files}{$out} =~ s/#SECTION#/$self->{section}/g;
+        $self->{files}{$out} =~ s/#PRIORITY#/$self->{priority}/g;
         $self->{files}{$out} =~ s/#POLICY#/$self->{policy_version}/g;
         # FIXME Maintainer
         $self->{files}{$out} =~ s/#SOURCE#/$self->{source}/g;
         $self->{files}{$out} =~ s/#PACKAGE#/$self->{source}/g;
 
         # debian/changelog
-        $self->{files}{$out} =~ s/#VERSION#/$self->{version}/g;
-        $self->{files}{$out} =~ s/#UPSTREAMVERSION#/$upstreamversion/g;
-        $self->{files}{$out} =~ s/#DEBIANVERSION#/$debianversion/g;
+        $self->{files}{$out} =~ s/#VERSION#/$self->version/ge;
+        $self->{files}{$out} =~ s/#EPOCH#/$self->{epoch}/g;
+        $self->{files}{$out} =~ s/#UPSTREAMVERSION#/$self->{upstream_version}/g;
+        $self->{files}{$out} =~ s/#DEBIANVERSION#/$self->{debian_revision}/g;
         $self->{files}{$out} =~ s/#DISTRIBUTION#/$self->{distribution}/g;
         $self->{files}{$out} =~ s/#URGENCY#/$self->{urgency}/g;
         local $" = "\n  * ";
@@ -710,24 +664,24 @@ sub process_templates {
         $self->{files}{$out} =~ s/#EMAIL#/$email/g;
         $self->{files}{$out} =~ s/#DATE#/$self->{builddate}/g;
 
-        # README.Debian
+        # README.Debian (as seen in dh_make)
         $self->{files}{$out} =~
           s/#DASHLINE#/'-'x(length("$self->{source} for Debian"))/ge;
 
-        # msic
+        # misc
         $self->{files}{$out} =~ s/#YEAR#/$year/g;
 
         # $self->{files}{$out} =~ s/#SHORTDATE#/$shortdate/g;
         $self->{files}{$out} =~ s/#SCRIPTNAME#/$0/g;
 
         # Here (otther): AUTOGENWARNING
-        # Here: SCRIPTNAME
 
         # Maybe sensible in D:P:M:Debhelper (dh_make):
         # DEBHELPERVERSION CHANGELOGS PRESERVE CONFIG_STATUS CONFIGURE
         # CONFIGURE_STAMP INSTALL PHONY_CONFIGURE CDBS_CLASS DPKG_ARCH
         # BUILD_DEPS
     }
+    return 1;
 }
 
 =pod
@@ -752,12 +706,12 @@ sub generate_files {
         if (m(^(.*/))) {
             mkpath("$self->{build_dir}/$1");
         }
-        open my $fh, ">$self->{build_dir}/$_"
-          || cluck("couldn't open $self->{build_dir}/$_: $!");
+        open my $fh, '>', "$self->{build_dir}/$_"
+          or cluck("couldn't open $self->{build_dir}/$_: $!");
         print $fh $f{$_};
         close $fh;
     }
-    chmod 0755, "$self->{build_dir}/debian/rules";
+    chmod oct 755, "$self->{build_dir}/debian/rules";
 }
 
 =pod
@@ -772,8 +726,8 @@ F<output_files>.
 sub output_add_changes_file {
     my ( $self, $changes_file ) = @_;
     push @{ $self->{output_files} }, $changes_file;
-    open my $fh, "$self->{base_dir}/$changes_file"
-      || cluck("couldn't open $self->{base_dir}/$changes_file: $!");
+    open my $fh, '<', "$self->{base_dir}/$changes_file"
+      or cluck("couldn't open $self->{base_dir}/$changes_file: $!");
     my $fields = parsecdata( $fh, $changes_file );
     foreach ( split /\n/, $fields->{Files} ) {
         push @{ $self->{output_files} }, ( split /\s+/, $_ )[-1];
@@ -831,22 +785,29 @@ Calls F<dpkg-buildpackage> from within C<base_dir>.
 sub call_buildpackage {
     my ( $self, %param ) = @_;
     $param{argv} ||= [];
-    my @argv = qw(-rfakeroot);
-    push @argv, @{ $param{argv} };
+    my @argv;
+
+    if ( not exists $ENV{FAKEROOTKEY}) {
+	push @argv, '-rfakeroot';
+    }
     if ( !$self->sign_changes ) {
         push @argv, '-uc';
     }
     if ( !$self->sign_source ) {
         push @argv, '-us';
     }
+    push @argv, @{ $param{argv} };
+
     my $orig = getcwd;
     my $arch = get_host_arch;
+    push @argv, "-a$arch";
+
     chdir $self->{build_dir};
-    my $rc = _verbose_system( 'dpkg-buildpackage', @argv );
+    my $rc = $self->_run_cmd( 'dpkg-buildpackage', @argv );
     chdir $orig;
-    if ( $rc == 0 ) {
+    if ( $rc ) {
         $self->output_add_changes_file(
-            "$self->{source}_$self->{version}_$arch.changes");
+            "$self->{source}_".$self->file_version."_$arch.changes");
         return 1;
     }
     else {
@@ -914,74 +875,94 @@ sub cleanup {
 
 =pod
 
-=item C<rename_files>
+=item C<file_version>
 
-If necessary, this function renames C<orig_tarball>, C<build_dir>,
-C<orig_dir> so that they are in sync with the C<source>, C<version>,
-and C<orig_tarball_extension> attributes.
+Returns the version of the generated file names. (either
+C<upstream_version> or C<C<upstream_version>.C<debian_version>>).
 
 =cut
 
-sub rename_files {
-    my ( $self, %param ) = @_;
-    my ( $tempdir, $source, $ext ) =
-      ( $self->{base_dir}, $self->{source}, $self->{orig_tarball_extension} );
-    my ($version) = ( $self->{version} =~ /^(.+?)(?:-.+)?$/ );
-    if ( exists $self->{build_dir} ) {
-        mv( $self->{build_dir}, "$tempdir/$source-$version" ) || die "$!";
-        $self->{build_dir} = "$tempdir/$source-$version";
-    }
-    if ( exists $self->{orig_dir} ) {
-        mv( $self->{orig_dir}, "$tempdir/$source-$version.orig" ) || die "$!";
-        $self->{orig_dir} = "$tempdir/$source-$version.orig";
-    }
-    if ( exists $self->{orig_tarball} ) {
-        mv( $self->{orig_tarball}, "$tempdir/${source}_$version.orig.tar.$ext" )
-          || die "$!";
-        $self->{orig_tarball} = "$tempdir/${source}_$version.orig.tar.$ext";
-    }
+sub file_version {
+    my ($self) = @_;
+    return $self->{upstream_version}
+      . ( $self->{debian_revision} ? '-' . $self->{debian_revision} : '' );
 }
+
+=pod
+
+=back
 
 =head1 HELPER FUNCTIONS
 
 These functions are documented here only for reference. They I<should>
 not be called from within derived classes.
 
-=item C<_getset>
-
-Simple get/set function, used by C<AUTOLOAD>.
-
-=cut
-
-sub _getset {
-    my ( $self, $param, $value ) = @_;
-    if ( defined $value ) {
-        $self->{$param} = $value;
-    }
-    $self->{$param};
-}
-
-=pod
-
-=item C<_verbose_system>
+=item C<_run_cmd>
 
 Simple wrapper around C<system> that emits warnings if the called
 program returns with an exit code != 0 or can't be executed.
 
 =cut
 
-sub _verbose_system {
-    my $rc = system(@_);
-    if ( $rc != 0 ) {
-        if ( $? == -1 ) {
-            warn "failed to execute @_: $!\n";
-        } elsif ( $? & 127 ) {
-            warn "child @_ died with signal " . ( $? & 127 ) . "\n";
-        } else {
-            warn "child @_ exited with value " . ( $? >> 8 ) . "\n";
-        }
+sub _run_cmd {
+    my $self = shift;
+    my $out;
+    eval {
+	if ($self->verbose) {
+	    run3( \@_, \undef );
+	} else {
+	    run3( \@_, \undef, \$out, \$out );
+	}
+    };
+
+    if ($@) {
+        warn "failed to execute @_: $!\n";
+    } elsif ( $? == 0 ) {
+        return 1;
+    } elsif ( $? & 127 ) {
+        warn "child @_ died with signal " . ( $? & 127 ) . "\n";
+    } else {
+        warn "child @_ exited with value " . ( $? >> 8 ) . "\n";
     }
-    return $rc;
+    return;
+}
+
+=pod
+
+=item C<_rename_source_files>
+
+If necessary, this function renames C<orig_tarball>, C<build_dir>,
+C<orig_dir> so that they are in sync with the C<source>, C<version>,
+and C<orig_tarball_extension> attributes.
+
+Derived classes should not need to call this method directly nor
+implement extensions to it.
+
+=cut
+
+sub _rename_source_files {
+    my ( $self, %param ) = @_;
+    my ( $tempdir, $source, $ext ) =
+      ( $self->{base_dir}, $self->{source}, $self->{orig_tarball_extension} );
+    if ( exists $self->{build_dir} ) {
+        mv( $self->{build_dir}, "$tempdir/$source-$self->{upstream_version}" )
+          || die "$!";
+        $self->{build_dir} = "$tempdir/$source-$self->{upstream_version}";
+    }
+    if ( exists $self->{orig_dir} ) {
+        mv( $self->{orig_dir},
+            "$tempdir/$source-$self->{upstream_version}.orig" )
+          || die "$!";
+        $self->{orig_dir} = "$tempdir/$source-$self->{upstream_version}.orig";
+    }
+    if ( exists $self->{orig_tarball} ) {
+        mv( $self->{orig_tarball},
+            "$tempdir/${source}_$self->{upstream_version}.orig.tar.$ext" )
+          || die "$!";
+        $self->{orig_tarball} =
+          "$tempdir/${source}_$self->{upstream_version}.orig.tar.$ext";
+    }
+    return 1;
 }
 
 =pod
@@ -994,25 +975,27 @@ sub _verbose_system {
 our $AUTOLOAD;
 
 sub AUTOLOAD {
-    my ( $self, $v ) = @_;
-    my ( $p, $a ) = ( $AUTOLOAD =~ /^(.+)::(.+)$/ );
-    return if ( $a eq 'DESTROY' );
+    my ( $self, $value ) = @_;
+    my ( $pkg, $attr ) = ( $AUTOLOAD =~ /^(.+)::(.+)$/ );
+    return if ( $attr eq 'DESTROY' );
 
     # Avoid error
     #   Can't use string ("Debian::Package::Make::Avira::AT") as an
     #   ARRAY ref while "strict refs" in use
-    no strict 'refs';
-    unless ( grep /^$a$/, @{"${p}::ATTRIBUTES"} ) {
-        carp("Undefined subroutine $AUTOLOAD called");
-        return;
-    }
-    if ( defined $v ) {
-        $self->{$a} = $v;
-        if ( grep /^$a$/, qw(source version) ) {
-            $self->rename_files();
+    {
+        no strict 'refs';
+        unless ( grep /^${attr}$/, @{${pkg}.'::ATTRIBUTES'} ) {
+            carp("Undefined subroutine $AUTOLOAD called");
+            return;
         }
     }
-    return $self->{$a};
+    if ( defined $value ) {
+        $self->{$attr} = $value;
+        if ( grep /^${attr}$/, qw(source epoch upstream_version debian_revision) ) {
+            $self->_rename_source_files();
+        }
+    }
+    return $self->{$attr};
 }
 
 1;
@@ -1030,7 +1013,7 @@ System or to the author.
 
 =item * Error checking needs work.
 
-=item * Debian::Package::Make doesn't have support for native packages yet.
+=item * Support for native packages isn't well tested yet.
 
 =item * The template mechanism is under-documented and needs work.
 
@@ -1038,10 +1021,22 @@ System or to the author.
 
 =head1 SEE ALSO
 
+=over
+
+=item
+
 Debian::Package::Make::Debhelper, Debian::Package::Make::TemplateDir,
 debhelper(7), dpkg-source(1), dpkg-buildpackage(1)
 
+=item 
+
 The F<examples> directory in the Debian::Package::Make distribution.
+
+=item
+
+Debian Policy Manual and Debian Developer's Reference
+
+=back
 
 =head1 AUTHOR
 

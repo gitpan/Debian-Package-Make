@@ -1,3 +1,29 @@
+libdebian-package-make-perl (0.04) unstable; urgency=low
+
+  * Put compatibility functions for Dpkg::* into separate module (which
+    will only be installed if this package is built on systems with a
+    non-modular dpkg-dev)
+  * This version should work with older versions of dpkg-dev again.
+  * Avoid nested fakeroot operation.
+  * Added verbose parameter.
+  * Added support for DEB_HOST_ARCH environment variable
+
+ -- Hilko Bengen <bengen@debian.org>  Tue, 22 Apr 2008 16:43:50 +0200
+
+libdebian-package-make-perl (0.03) unstable; urgency=low
+
+  * Implemented separate handling of epoch, upstream_version,
+    debian_revision
+  * Fixed some of perlcritic's warnings (eval STRING, strictures, etc.)
+  * Fixed error checking for parsing .chagnes file
+  * Fixed warnings
+  * Removed some dead code
+  * Added first "real" tests.
+  * Added antivir packaging script that uses on the antivir program's
+    built-in update feature
+
+ -- Hilko Bengen <bengen@debian.org>  Sat, 01 Mar 2008 15:26:27 +0100
+
 libdebian-package-make-perl (0.02) unstable; urgency=low
 
   * Added backward compatibility hack for older dpkg-dev packages that are

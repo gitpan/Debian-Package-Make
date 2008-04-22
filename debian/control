@@ -2,15 +2,18 @@ Source: libdebian-package-make-perl
 Section: perl
 Priority: optional
 Build-Depends: debhelper (>= 5.0.0), perl (>= 5.8.8)
-Build-Depends-Indep: libwww-perl, libfile-copy-recursive-perl
+Build-Depends-Indep: libwww-perl, libfile-copy-recursive-perl, libipc-run3-perl, fakeroot
 Maintainer: Hilko Bengen <bengen@debian.org>
 Standards-Version: 3.7.3
-# Homepage: http://search.cpan.org/dist/Debian::Package::Make/
+Homepage: http://search.cpan.org/dist/Debian::Package::Make/
+Vcs-Git: git://git.debian.org/git/users/bengen/Debian-Package-Make.git
+Vcs-Browser: http://git.debian.org/git/users/bengen/Debian-Package-Make.git
 
 Package: libdebian-package-make-perl
 Architecture: all
-Depends: ${perl:Depends}, dpkg-dev, libwww-perl, libfile-copy-recursive-perl
-Description:  Perl modules for automatically generating Debian packages
+Depends: ${perl:Depends}, dpkg-dev${dpkg-dev:Version}, libwww-perl, libfile-copy-recursive-perl,
+ libipc-run3-perl, fakeroot
+Description: Perl modules for automatically generating Debian packages
  Debian::Package::Make::* is a set of modules that simplify the
  process of writing make-*-package programs (scripts that
  automatically generate Debian packages).
@@ -18,4 +21,4 @@ Description:  Perl modules for automatically generating Debian packages
  This is useful for source distributions where contents change too
  frequently for manual building or where peculiar licenses prohibit
  redistribution via public package repositories.
-Tag: implemented-in::perl
+Tag: devel::debian,, devel::packaging, scope::utility, implemented-in::perl

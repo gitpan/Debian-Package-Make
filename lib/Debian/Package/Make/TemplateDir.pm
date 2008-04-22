@@ -11,9 +11,12 @@ Debian::Package::Make::TemplateDir - Perl extension for autobuilding Debian pack
 
 package Debian::Package::Make::TemplateDir;
 
-use Debian::Package::Make '0.02';
+use strict;
+use warnings;
 
-our $VERSION = '0.02'; 
+our $VERSION = 0.04;
+
+use Debian::Package::Make 0.04;
 
 our @ISA    = qw(Debian::Package::Make);
 our @EXPORT = qw(@ATTRIBUTES);
@@ -101,7 +104,7 @@ sub prepare_files {
                 {
                     my ($fn) = $File::Find::name =~ m(^$td/*(.*)$);
                     my $fh;
-                    open $fh, $_ or warn "Can't read $fn.\n";
+                    open $fh, '<', $_ or warn "Can't read $fn.\n";
                     local $/;
                     $f{$fn} = <$fh>;
                     close $fh;

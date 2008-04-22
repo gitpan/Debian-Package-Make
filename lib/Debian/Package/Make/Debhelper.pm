@@ -12,9 +12,12 @@ debhelper(7).
 
 package Debian::Package::Make::Debhelper;
 
-our $VERSION = '0.02'; 
+use strict;
+use warnings;
 
-use Debian::Package::Make '0.02';
+our $VERSION = 0.04;
+
+use Debian::Package::Make 0.04;
 use Text::Wrap;
 
 our @ISA    = qw(Debian::Package::Make);
@@ -46,6 +49,7 @@ push @ATTRIBUTES, (
 sub new {
     my ( $class, %param ) = @_;
     my $self = $class->SUPER::new(%param);
+    $self->{standards_version} ||= '3.7.3';
     push( @{ $self->{build_depends} }, 'debhelper (>> 5)' )
       unless grep /debhelper/, @{ $self->{build_depends} };
     bless $self, $class;
@@ -132,7 +136,7 @@ EOF
         $f{'debian/control'} .=
           "Build-Depends-Indep: @{$self->{build_depends_indep}}\n";
     }
-    $f{'debian/control'} .= "Standards-Version: 3.7.2\n";
+    $f{'debian/control'} .= "Standards-Version: $self->{standards_version}\n";
     foreach my $name ( keys %{ $self->{binaries} } ) {
         my %binary = %{ $self->{binaries}{$name} };
         $f{'debian/control'} .= <<EOF;
@@ -155,7 +159,7 @@ EOF
     }
 
     $f{'debian/changelog.in'} = <<EOF;
-#SOURCE# (#UPSTREAMVERSION#-#DEBIANVERSION#) #DISTRIBUTION#; urgency=#URGENCY#
+#SOURCE# (#VERSION#) #DISTRIBUTION#; urgency=#URGENCY#
 
   * #CHANGES#
 

@@ -57,6 +57,13 @@ install-stamp: build-stamp
 	# Add commands to install the package into $(TMP)
 	$(MAKE) install DESTDIR=$(TMP) PREFIX=/usr
 
+	# Remove ::Compat module if new dpkg-dev version available.
+	if dpkg-checkbuilddeps -d 'dpkg-dev (>= 1.14)' /dev/null; then \
+		rm $(TMP)/usr/share/perl5/Debian/Package/Make/Compat.pm \
+		   $(TMP)/usr/share/man/man3/Debian::Package::Make::Compat.3pm ;\
+		echo 'dpkg-dev:Version= (>= 1.14)' >> \
+			debian/libdebian-package-make-perl.substvars; \
+	fi
 	[ ! -d $(TMP)/usr/share/perl5 ] || rmdir --ignore-fail-on-non-empty --parents --verbose $(TMP)/usr/share/perl5
 
 	touch $@
@@ -67,8 +74,6 @@ binary-indep: build install
 	dh_installexamples examples/*
 	dh_installdocs README
 	dh_installchangelogs Changes
-	dh_shlibdeps
-	dh_strip
 	dh_perl
 	dh_compress
 	dh_fixperms

@@ -13,7 +13,8 @@ WriteMakefile(
                            'Dpkg::Arch'  => 0,
                            'Dpkg::Cdata' => 0,
                            'Text::Wrap'  => 0,
-                           'File::Find'  => 0 },
+                           'File::Find'  => 0,
+                           'IPC::Run'    => 0 },
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
       (ABSTRACT_FROM  => 'lib/Debian/Package/Make.pm', # retrieve abstract from module
        AUTHOR         => 'Hilko Bengen <bengen@debian.org>') : ()),

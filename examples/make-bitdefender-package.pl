@@ -5,14 +5,10 @@ use warnings;
 
 use lib '../lib';
 
-# TODO
 package Debian::Package::Make::BitDefender::Scanner;
 
 use Debian::Package::Make::TemplateDir '0.02';
 our @ISA = qw(Debian::Package::Make::TemplateDir);
-# use Cwd;
-# use File::Path;
-# use File::Copy;
 
 sub new {
     my ( $class, %param ) = @_;
@@ -128,7 +124,8 @@ EOF
         warn "Could not determine version\n";
     }
     else {
-        $self->version("$version-1");
+        $self->upstream_version($version);
+        $self->debian_revision('1');
     }
 }
 

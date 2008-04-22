@@ -1,0 +1,11 @@
+Source: #SOURCE#
+Section: #SECTION#
+Priority: #PRIORITY#
+Maintainer: #USERNAME# <#EMAIL#>
+Build-Depends: debhelper (>= 5)
+Standards-Version: 3.7.2
+
+Package: #SOURCE#
+Architecture: all
+Description: a short description
+ This should be a verbose description, but it isn't.

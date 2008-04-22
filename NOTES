@@ -5,6 +5,9 @@
 ** Debhelper: add_dir
 ** Debhelper: add_file
 * Testcases
+** Trivial Packages
+*** DONE TemplateDir
+*** TODO Debhelper
 ** Trivial Packages that *supposed* to fail at some point
 *** broken debian/rules (fail dpkg-buildpackage -b)
 *** broken tarball (fail tar -x.f)
@@ -26,8 +29,21 @@
     http://download.bitdefender.com/SMB/File_Server_Security/BitDefender_Security_for_Samba/Unix/Current/EN/Version_2.X/Linux/BitDefender-Security-Samba-2.1-5-linuxgcc3x-i586.ipk.run
 **** DONE -scanner
 **** DONE -data
+*** avg
+*** Kaspersky
+**** File Server
+     http://dnl-eu8.kaspersky-labs.com/products/english/file_servers/kavlinuxserver5.7/linux/kav4fs_5.7-17_i386.deb
+     http://dnl-eu8.kaspersky-labs.com/products/english/file_servers/kavlinuxserver5.7/linux/kav4fs-5.7-17.i386.rpm
+     http://dnl-eu8.kaspersky-labs.com/products/english/file_servers/kavlinuxserver5.5/kav4fs-5.5-27.i386.rpm
+     http://dnl-eu8.kaspersky-labs.com/products/english/file_servers/kavlinuxserver5.5/kav4fs-5.5.27.deb
+**** Workstation
+     http://dnl-eu8.kaspersky-labs.com/products/english/workstations/kavlinuxworkstation5.5/linux/kav4ws-5.5-27.i386.rpm
+     http://dnl-eu8.kaspersky-labs.com/products/english/workstations/kavlinuxworkstation5.5/linux/kav4ws-5.5.27.deb
+     http://dnl-eu8.kaspersky-labs.com/products/english/workstations/kavlinuxworkstation5.7/linux/kav4ws_5.7-17_i386.deb
+     http://dnl-eu8.kaspersky-labs.com/products/english/workstations/kavlinuxworkstation5.7/linux/kav4ws-5.7-17.i386.rpm
 ** IBM JDK?
 ** Intel C Compiler?
+** Sun Studio?
 ** Google Picasa
    http://picasa.google.com/linux/download.html
    http://dl.google.com/linux/standalone/picasa-2.2.2820-5.i386.bin
@@ -38,19 +54,32 @@
    ftp://ftp.adobe.com/pub/adobe/reader/unix/8.x/8.1.1/enu/AdobeReader_enu-8.1.1-1.i486.tar.bz2
 *** TODO Version 7
 *** DONE Version 8
-** Auerswald tools
-*** TODO COMtools
+** TODO Auerswald tools
+*** COMtools
     http://www.auerswald-root.de/download/datei/linux/comtools/v2269/COMtools-2.2.69.tar.gz
-*** TODO COMlist
+*** COMlist
     http://www.auerswald-root.de/download/datei/linux/comlist/v2436/COMlist-2.4.36.tar.gz
-*** DONE COMset
+*** COMset
     http://www.auerswald-root.de/download/datei/linux/comset/v2628/COMset-2.6.28.tar.gz
 * Ideas
 ** Templating system
-*** Template (TT2)
-*** Text::Template
-** Implement separate upstream_version, debian_version attributes
-** Add determine_version method to D::P::Make
+*** Make blacklist / rules / etc. more flexible (see below, POTFILES.in)
+** do() method
+   Default Getopt handling?
+*** 1. fetch stuff
+**** non-native ("native")
+***** download_orig_tarball ("url")
+***** copy_orig_tarball ("file")
+***** generate_orig_dir 
+**** generate_build_dir
+*** 2. add Debian-specific stuff
+**** prepare_files
+**** generate_files
+*** 3. build ("build_source", "build_binary") 
+*** 4. copy ("destdir")
+*** 5. cleanup
+** DONE Implement version = (epoch, upstream_version, debian_revision)
+** DONE Add determine_version method to D::P::Make
    This should be called from (download|copy)_orig_tarball AFTER the
    tarball has been put in place.
 ** DONE Create debian directory not from hash but from template directory
@@ -59,8 +88,9 @@
 * Bugs
 ** TODO po/POTFILES.in
 *** DONE Blacklist po/POTFILES.in ...
-*** switch to different ending ... .dpm.in ?
 ** TODO Support native packages
    dpkg-source(909):
        my $native = !($difffile || $debianfile);
+*** works implicitly right now.
+*** testing needed.
 ** DONE template subdirectories are not created

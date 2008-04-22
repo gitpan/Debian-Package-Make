@@ -1,0 +1,7 @@
+#!/usr/bin/make -f
+clean:
+	false # this should make the build process fail.
+build:
+	false
+binary:
+	false

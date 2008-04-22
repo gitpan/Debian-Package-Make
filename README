@@ -1,4 +1,4 @@
-Debian-Package-Make version 0.02
+Debian-Package-Make version 0.04
 ================================
 
 Debian::Package::Make::* is a set of modules that simplify the process
@@ -8,6 +8,14 @@ generate Debian packages).
 This is useful for source distributions where contents change too
 frequently for manual building or where peculiar licenses prohibit
 redistribution via public package repositories.
+
+I maintain Debian::Package::Make using git and I feed my changes to a
+public repository on a regular basis.
+
+This repository is available at
+    git://git.debian.org/git/users/bengen/Debian-Package-Make.git
+or
+    http://git.debian.org/git/users/bengen/Debian-Package-Make.git
 
 INSTALLATION
 
@@ -31,11 +39,47 @@ This module requires a few modules that are included in Perl distribution
 
 This module requires these other modules and libraries:
 
-  LWP::Simple
-  Dpkg::Arch, Dpkg::Cdata (part of the dpkg-dev package)
+  LWP
+  File::Copy::Recursive
+  IPC::Run
+  dpkg-dev, preferably version 1.14 or above (see below)
 
 The sample scripts in the contrib directory may require additional
 modules.
+
+NOTES
+
+Compatibility module for older dpkg-dev versions
+
+  Starting with 1.14, much of dpkg-dev has been refactored into Perl
+  modules within the Dpkg:: namespace. Debian::Package::Make uses some
+  functions that are exported from those modules, even though the
+  dpkg-dev developers have marked them as not yet stable.
+
+  For older systems, these functions (get_host_arch, parsecdata,
+  parseversion) are provided by the Debian::Package::Make::Compat
+  module.
+
+dpkg-genchanges behavior
+
+  The dpkg-dev packages that are part of etch and lenny (1.13.25 and
+  1.14.16.6, respectively) contain dpkg-genchanges that expose
+  different behavior if called with the the default `-si' switch:
+
+  1.14.16:
+
+    [...] the original source will be included only if the upstream
+    version number (the version without epoch and without Debian
+    revision) differs from the upstream version number of the previous
+    changelog entry.
+
+  1.13.25:
+
+    [...] the original source will be included if the version number
+    ends in -0 or -1, i.e. if the Debian revision part of the version
+    number is 0 or 1.
+
+  Debian::Package::Make does not handle this difference.
 
 COPYRIGHT AND LICENCE
 

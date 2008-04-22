@@ -1,7 +1,7 @@
 # http://module-build.sourceforge.net/META-spec.html
 #XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
 name:         Debian-Package-Make
-version:      0.02
+version:      0.04
 version_from: lib/Debian/Package/Make.pm
 installdirs:  site
 requires:
@@ -12,6 +12,7 @@ requires:
     File::Find:                    0
     File::Path:                    0
     File::Temp:                    0
+    IPC::Run:                      0
     LWP::Simple:                   0
     Text::Wrap:                    0
 

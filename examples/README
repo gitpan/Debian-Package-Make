@@ -2,8 +2,9 @@ Examples for Debian-Package-Make
 ================================
 
 make-adobereader-package.pl
+---------------------------
 
-Builds a Debian package from the Adobe Reader tarball available from
+builds a Debian package from the Adobe Reader tarball available from
 <http://www.adobe.com/products/acrobat/readstep2_allversions_nojs1.html>.
 
 The .deb available from the site installs everything into /opt which
@@ -13,6 +14,7 @@ This program uses Debian::Package::Make::TemplateDir and has been
 tested only with AdobeReader_enu-8.1.1-1.i486.tar.bz2 so far.
 
 make-bitdefender-package.pl
+---------------------------
 
 can do two things:
 
@@ -28,3 +30,24 @@ can do two things:
 
   For the -data packages, the Debian::Package::Make::Debhelper module
   is used.
+
+make-avira-package.pl
+---------------------
+
+takes a slightly different approach since there are only 4 VDF files
+with quite clear purpose.
+
+It fetches the executable and VDF files from a tarball or an existing
+installation directory, runs
+
+    antivir --update
+
+then
+
+    antivir --check --update
+
+and determines current version numbers from its output.
+
+Individual packages (with individual version numbers) are then built
+for antivir (the engine) and antivir-data-vdf0 through
+antivir-data-vdf3.
